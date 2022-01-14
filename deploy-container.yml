@@ -1,0 +1,79 @@
+#  - debug:
+#      msg: "{{ item|split(':')|first }}"
+#    loop: "{{ container.volumes }}"
+
+  - name: Check if directories exist
+    stat:
+      path: "{{ item|split(':')|first }}"
+    register: folder_stats
+    become_user: "{{ container_user }}"
+    become: true
+    loop: "{{ container.volumes }}"
+
+  - debug: var=folder_stats.results
+#   - debug:
+#       msg: "{{ item.stat.path }} dir:{{ item.stat.isdir }} reg:{{ item.stat.isreg }} lnk:{{ item.stat.islnk }} ex:{{item.stat.exists}}"
+#     #when: item.stat.isdir == true or item.stat.exists == false
+#     loop: "{{ folder_stats.results }}"
+# 
+  - name: "Create {{ container.name }}"
+    file:
+      state: directory
+      path: "{{ item.item|split(':')|first }}"
+      owner: "{{ container_user }}"
+      mode: "0700"
+    become_user: "{{ container_user }}"
+    become: true
+    when:
+    #- item.stat.isdir == true or item.stat.exists == false
+    - item.stat.exists == false or (item.stat.exists is defined and item.stat.isdir == true)
+    - container.volumes|length>0
+    loop: "{{ folder_stats.results }}"
+    loop_control:
+      label: "{{ item.item|split(':')|first }}"
+
+  #- debug: var=container.volumes
+
+#  - name: "Create tmp storage for {{ container.name }}"
+#    file:
+#      state: directory
+#      path: "/home/{{ container_user }}/tmp/{{ container.name }}"
+#      mode: "0700"
+#      owner: "{{ container_user }}"
+#    become_user: "{{ container_user }}"
+#    become: true
+
+#  - name: "Pull containerimage {{ container.image }} for container {{ container.name }}"
+#    containers.podman.podman_pod:
+#      name: "{{ container.name | mandatory }}"
+#      hostname: "{{ container.name | mandatory }}"
+#      network: "{{ container_user }}"
+#      recreate: true
+
+  - name: "Pull containerimage {{ container.image }} for container {{ container.name }}"
+    containers.podman.podman_image:
+      name: "{{ container.image | mandatory }}"
+
+  - name: "{{ container.name }} container present"
+    containers.podman.podman_container:
+      name: "{{ container.name }}"
+      #user: "{{ container.user | default(omit) }}"
+      state: started
+      restart_policy: always
+      image: "{{ container.image | mandatory }}"
+      ports: "{{ container.ports | default(omit) }}"
+      env: "{{ container.env | default(omit) }}"
+      volumes: "{{ container.volumes | default (omit) }}"
+      tmpfs: "{{ container.tmpfs | default (omit) }}"
+      userns: keep-id
+      read_only: "{{ container.read_only|default(true) }}"
+      read_only_tmpfs: false
+      network_aliases: "{{ container.name }}"
+      etc_hosts:
+        "wiki": "{{ ansible_default_ipv4.address }}"
+      user: "{{ user_id.uid if not container.user|default(true) == false else omit }}"
+      #network: "{{ container_user }}"
+      #pod: "{{ container_user }}"
+    become_user: "{{ container_user }}"
+    become: true
+    #ignore_errors: true

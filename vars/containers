@@ -1,0 +1,58 @@
+---
+container_user: wiki
+containers:
+- name: postgresql
+  enabled: true
+  image: postgres:11-alpine
+  volumes:
+    - /home/{{ container_user }}/db-data:/var/lib/postgresql/data
+  ports:
+  - 5432:5432
+  env:
+    POSTGRES_DB: wiki
+    POSTGRES_PASSWORD: wikijsrocks
+    POSTGRES_USER: wiki
+  tmpfs:
+    "/run/postgresql": "rw"
+
+- name: gitea
+  enabled: true
+  #user: 1002
+  image: gitea/gitea:1.15.9-rootless
+  volumes:
+  - /home/{{ contjainer_user }}/gitdata:/var/lib/gitea
+  - /home/{{ container_user }}/gitconfig:/etc/gitea
+  - /etc/timezone:/etc/timezone:ro
+  - /etc/localtime:/etc/localtime:ro
+  ports:
+    - 8082:3000
+    - 2222:2222
+  env:
+  - GITEA__database__DB_TYPE=postgres
+  - GITEA__database__HOST=wiki:5432
+  - GITEA__database__NAME=wiki
+  - GITEA__database__USER=wiki
+  - GITEA__database__PASSWD=wikijsrocks
+  tmpfs:
+    "/tmp": "rw"
+
+- name: wikijs
+  enabled: true
+  image: requarks/wiki:2
+  volumes:
+    - /home/{{ container_user }}/wikidata:/wiki/wikidata
+    - /home/{{ container_user }}/wikidata/backup:/wiki/__backup
+  ports:
+    - 8081:3000
+  read_only: false
+  #user: 123
+  user: false
+  env:
+    DB_TYPE: postgres
+    DB_HOST: wiki
+    DB_PORT: 5432
+    DB_USER: wiki
+    DB_PASS: wikijsrocks
+    DB_NAME: wiki
+
+

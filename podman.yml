@@ -1,0 +1,68 @@
+# ansible-playbook podman.yml
+---
+- name: containers
+  hosts: containers
+  vars_files:
+  - vars/containers
+  tasks:
+  - name: Clean env
+    shell:
+      cmd: "{{ item }}"
+    become_user: "{{ container_user }}"
+    become: true
+    ignore_errors: true
+    loop:
+      - podman pod rm "{{ container_user }}"
+      - podman stop $(podman ps -a -q)
+      - podman rm $(podman ps -a -q)
+      - podman pod rm "{{ container_user }}"
+      - loginctl enable-linger "{{ container_user }}"
+
+  - name: Install podman
+    package:
+      state: present
+      name:
+        - podman
+        - acl
+    become: true
+
+  - name: Enable docker.io registry
+    lineinfile:
+      line: "unqualified-search-registries = ['docker.io']"
+      path: /etc/containers/registries.conf
+    become: true
+
+  - name: Build json query
+    set_fact:
+      jq: "[?not_null(enabled,`true`)]|[?not_null(image)]"
+
+  - name: "Create {{ container_user }} user"
+    user:
+      name: "{{ container_user }}"
+      state: present
+      shell: /bin/bash
+    register: user_id
+    become: true
+
+  - name: "Create network {{ container_user }}"
+    containers.podman.podman_network:
+      name: "{{ container_user }}"
+      internal: true
+      driver: bridge
+      state: present
+    become_user: "{{ container_user }}"
+    become: true
+
+  - name: Create pod
+    containers.podman.podman_pod:
+      name: "{{ container_user }}"
+      state: created
+    become_user: "{{ container_user }}"
+    become: true
+
+  - name: Deploy containers
+    include_tasks: deploy-container.yml
+    loop: "{{ containers|json_query(jq) }}"
+    loop_control:
+      label: "{{ container.name }}"
+      loop_var: container
