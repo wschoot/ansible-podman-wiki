@@ -20,7 +20,7 @@ containers:
   #user: 1002
   image: gitea/gitea:1.15.9-rootless
   volumes:
-  - /home/{{ contjainer_user }}/gitdata:/var/lib/gitea
+  - /home/{{ container_user }}/gitdata:/var/lib/gitea
   - /home/{{ container_user }}/gitconfig:/etc/gitea
   - /etc/timezone:/etc/timezone:ro
   - /etc/localtime:/etc/localtime:ro
