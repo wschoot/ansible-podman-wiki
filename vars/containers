@@ -28,11 +28,11 @@ containers:
     - 8082:3000
     - 2222:2222
   env:
-  - GITEA__database__DB_TYPE=postgres
-  - GITEA__database__HOST=wiki:5432
-  - GITEA__database__NAME=wiki
-  - GITEA__database__USER=wiki
-  - GITEA__database__PASSWD=wikijsrocks
+  - GITEA__database__DB_TYPE: postgres
+  - GITEA__database__HOST: wiki:5432
+  - GITEA__database__NAME: wiki
+  - GITEA__database__USER: wiki
+  - GITEA__database__PASSWD: wikijsrocks
   tmpfs:
     "/tmp": "rw"
 
